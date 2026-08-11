@@ -34,10 +34,11 @@ export function generateText(length: LengthKey): string {
   const out: string[] = [];
   let prev = "";
   for (let i = 0; i < count; i++) {
-    let w = SPANISH_WORDS[Math.floor(Math.random() * SPANISH_WORDS.length)];
-    while (w === prev) w = SPANISH_WORDS[Math.floor(Math.random() * SPANISH_WORDS.length)];
+    const pick = () => SPANISH_WORDS[Math.floor(Math.random() * SPANISH_WORDS.length)] as string;
+    let w = pick();
+    while (w === prev) w = pick();
     prev = w;
-    out.push(w);
+
   }
   return out.join(" ");
 }
