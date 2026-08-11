@@ -1,38 +1,17 @@
 import { useState } from "react";
-import type { LengthKey } from "@/lib/words";
 
 interface Props {
-  length: LengthKey;
-  onLengthChange: (l: LengthKey) => void;
   onGenerate: () => void;
   onCustomText: (t: string) => void;
 }
 
-const OPTIONS: LengthKey[] = ["corto", "medio", "largo"];
-
-export function TextGenerator({ length, onLengthChange, onGenerate, onCustomText }: Props) {
+export function TextGenerator({ onGenerate, onCustomText }: Props) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
 
   return (
     <div className="w-full space-y-3">
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <div className="flex rounded-full border border-border bg-card/60 p-1">
-          {OPTIONS.map((o) => (
-            <button
-              key={o}
-              onClick={() => onLengthChange(o)}
-              className={[
-                "cursor-pointer rounded-full px-4 py-1.5 font-mono text-xs transition-colors duration-150",
-                length === o
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              ].join(" ")}
-            >
-              {o}
-            </button>
-          ))}
-        </div>
         <button
           onClick={onGenerate}
           className="cursor-pointer rounded-full border border-border bg-card/60 px-4 py-2 font-mono text-xs text-muted-foreground transition-colors duration-150 hover:border-primary hover:text-primary"
@@ -59,7 +38,7 @@ export function TextGenerator({ length, onLengthChange, onGenerate, onCustomText
           <div className="flex justify-end gap-2">
             <button
               onClick={() => setDraft("")}
-              className="rounded-full px-4 py-1.5 font-mono text-xs text-muted-foreground hover:text-foreground"
+              className="cursor-pointer rounded-full px-4 py-1.5 font-mono text-xs text-muted-foreground hover:text-foreground"
             >
               limpiar
             </button>
@@ -71,7 +50,7 @@ export function TextGenerator({ length, onLengthChange, onGenerate, onCustomText
                   setOpen(false);
                 }
               }}
-              className="rounded-full bg-primary px-4 py-1.5 font-mono text-xs text-primary-foreground transition-opacity hover:opacity-90"
+              className="cursor-pointer rounded-full bg-primary px-4 py-1.5 font-mono text-xs text-primary-foreground transition-opacity hover:opacity-90"
             >
               practicar
             </button>
