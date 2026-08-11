@@ -38,7 +38,8 @@ export function generateText(length: LengthKey): string {
     let w = pick();
     while (w === prev) w = pick();
     prev = w;
-
+    out.push(w);
   }
+
   return out.join(" ");
 }
