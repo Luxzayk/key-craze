@@ -23,7 +23,7 @@ export function TextGenerator({ length, onLengthChange, onGenerate, onCustomText
               key={o}
               onClick={() => onLengthChange(o)}
               className={[
-                "rounded-full px-4 py-1.5 font-mono text-xs transition-colors duration-150",
+                "cursor-pointer rounded-full px-4 py-1.5 font-mono text-xs transition-colors duration-150",
                 length === o
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground",
@@ -35,13 +35,13 @@ export function TextGenerator({ length, onLengthChange, onGenerate, onCustomText
         </div>
         <button
           onClick={onGenerate}
-          className="rounded-full border border-border bg-card/60 px-4 py-2 font-mono text-xs text-muted-foreground transition-colors duration-150 hover:border-primary hover:text-primary"
+          className="cursor-pointer rounded-full border border-border bg-card/60 px-4 py-2 font-mono text-xs text-muted-foreground transition-colors duration-150 hover:border-primary hover:text-primary"
         >
           nuevo texto
         </button>
         <button
           onClick={() => setOpen((v) => !v)}
-          className="rounded-full border border-border bg-card/60 px-4 py-2 font-mono text-xs text-muted-foreground transition-colors duration-150 hover:border-primary hover:text-primary"
+          className="cursor-pointer rounded-full border border-border bg-card/60 px-4 py-2 font-mono text-xs text-muted-foreground transition-colors duration-150 hover:border-primary hover:text-primary"
         >
           texto propio
         </button>
