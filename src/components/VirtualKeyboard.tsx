@@ -3,7 +3,7 @@ import { KEYBOARD_ROWS } from "@/lib/keyboard";
 interface Props {
   activeCode: string | null;
   activeError: boolean;
-  nextChar?: string;
+  nextChar?: string | undefined;
 }
 
 export function VirtualKeyboard({ activeCode, activeError, nextChar }: Props) {
