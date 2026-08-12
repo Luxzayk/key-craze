@@ -11,6 +11,7 @@ interface Props {
   errors: number;
   wpmHistory: WpmSample[];
   errorKeys: Record<string, number>;
+  isNewPB?: boolean;
   onRetry: () => void;
   onNew: () => void;
 }
@@ -22,12 +23,20 @@ export function ResultsScreen({
   errors,
   wpmHistory,
   errorKeys,
+  isNewPB,
   onRetry,
   onNew,
 }: Props) {
   return (
     <div className="results-enter mb-4 w-full rounded-2xl border border-primary/30 bg-card/80 p-8 text-center shadow-[0_0_60px_-20px_var(--primary)] backdrop-blur">
       <h2 className="font-mono text-sm uppercase tracking-[0.3em] text-primary">completado</h2>
+
+      {isNewPB && (
+        <div className="results-enter mx-auto mt-4 inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-400/10 px-4 py-1.5 font-mono text-xs text-amber-300">
+          ¡Nuevo récord! 🏆
+        </div>
+      )}
+
       <div className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-4">
         <StatChip icon={Gauge} label="ppm" value={String(wpm)} />
         <StatChip

@@ -4,9 +4,10 @@ interface Props {
   text: string;
   typed: string;
   errorAt: boolean;
+  fontFamily: string;
 }
 
-export function TypingArea({ text, typed, errorAt }: Props) {
+export function TypingArea({ text, typed, errorAt, fontFamily }: Props) {
   const cursorRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
@@ -15,7 +16,10 @@ export function TypingArea({ text, typed, errorAt }: Props) {
 
   return (
     <div className="relative w-full max-h-[40vh] overflow-y-auto rounded-2xl border border-border bg-card/60 p-6 sm:p-8 shadow-lg backdrop-blur">
-      <p className="font-mono text-xl leading-relaxed tracking-wide sm:text-2xl sm:leading-[2.4rem] select-none">
+      <p
+        className="text-xl leading-relaxed tracking-wide sm:text-2xl sm:leading-[2.4rem] select-none"
+        style={{ fontFamily }}
+      >
         {text.split("").map((ch, i) => {
           const isTyped = i < typed.length;
           const correct = isTyped && typed[i] === ch;

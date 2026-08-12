@@ -1,5 +1,6 @@
-import { Gauge, Target, Clock, AlertCircle } from "lucide-react";
+import { Gauge, Target, Clock, AlertCircle, Hash } from "lucide-react";
 import { StatChip, accuracyColor } from "@/components/StatChip";
+import type { TestMode } from "@/lib/storage";
 
 interface Props {
   wpm: number;
@@ -7,9 +8,27 @@ interface Props {
   seconds: number;
   errors: number;
   progress: number;
+  mode: TestMode;
+  timeRemaining: number | null;
+  wordsCompleted: number;
+  wordTarget?: number;
 }
 
-export function StatsPanel({ wpm, accuracy, seconds, errors, progress }: Props) {
+export function StatsPanel({
+  wpm,
+  accuracy,
+  seconds,
+  errors,
+  progress,
+  mode,
+  timeRemaining,
+  wordsCompleted,
+  wordTarget,
+}: Props) {
+  const timeValue =
+    mode === "time" && timeRemaining !== null ? `${timeRemaining}s` : `${seconds}s`;
+  const timeLabel = mode === "time" ? "restante" : "tiempo";
+
   return (
     <div className="w-full rounded-2xl border border-border bg-card/50 p-4 backdrop-blur">
       <div className="grid grid-cols-4 gap-2">
@@ -21,7 +40,23 @@ export function StatsPanel({ wpm, accuracy, seconds, errors, progress }: Props) 
           size="sm"
           valueClassName={accuracyColor(accuracy)}
         />
-        <StatChip icon={Clock} label="tiempo" value={`${seconds}s`} size="sm" valueClassName="text-primary" />
+        {mode === "words" && wordTarget ? (
+          <StatChip
+            icon={Hash}
+            label="palabras"
+            value={`${wordsCompleted}/${wordTarget}`}
+            size="sm"
+            valueClassName="text-primary"
+          />
+        ) : (
+          <StatChip
+            icon={Clock}
+            label={timeLabel}
+            value={timeValue}
+            size="sm"
+            valueClassName={mode === "time" && timeRemaining !== null && timeRemaining <= 5 ? "text-destructive" : "text-primary"}
+          />
+        )}
         <StatChip icon={AlertCircle} label="errores" value={String(errors)} size="sm" valueClassName="text-primary" />
       </div>
       <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-secondary">

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { playClickSound } from "@/lib/click-sound";
+import type { TestMode } from "@/lib/storage";
+import { countCorrectWords } from "@/lib/typing-utils";
 
 /** Si es true, el usuario no puede avanzar hasta corregir el error. */
 export const STRICT_MODE = true;
@@ -9,20 +11,12 @@ export interface WpmSample {
   wpm: number;
 }
 
-export interface TypingState {
-  typed: string;
-  errors: number;
-  totalKeystrokes: number;
-  startedAt: number | null;
-  finished: boolean;
-  elapsed: number;
-  activeCode: string | null;
-  activeError: boolean;
-  blocked: boolean;
-}
-
 interface Options {
   soundEnabled?: boolean;
+  mode: TestMode;
+  timeLimitSec?: number;
+  wordTarget?: number;
+  onExtendText?: () => void;
 }
 
 function calcWpm(typed: string, text: string, elapsedSec: number): number {
@@ -31,7 +25,7 @@ function calcWpm(typed: string, text: string, elapsedSec: number): number {
   return Math.round(correctChars / 5 / (elapsedSec / 60));
 }
 
-export function useTyping(text: string, options: Options = {}) {
+export function useTyping(text: string, sessionKey: number, options: Options) {
   const [typed, setTyped] = useState("");
   const [errors, setErrors] = useState(0);
   const [totalKeystrokes, setTotalKeystrokes] = useState(0);
@@ -51,6 +45,11 @@ export function useTyping(text: string, options: Options = {}) {
   textRef.current = text;
   const soundRef = useRef(options.soundEnabled ?? false);
   soundRef.current = options.soundEnabled ?? false;
+  const extendedAtRef = useRef(0);
+  const onExtendTextRef = useRef(options.onExtendText);
+  onExtendTextRef.current = options.onExtendText;
+
+  const { mode, timeLimitSec, wordTarget } = options;
 
   const recordErrorKey = useCallback((code: string) => {
     setErrorKeys((prev) => ({ ...prev, [code]: (prev[code] ?? 0) + 1 }));
@@ -69,17 +68,27 @@ export function useTyping(text: string, options: Options = {}) {
     setBlocked(false);
     setWpmHistory([]);
     setErrorKeys({});
+    extendedAtRef.current = 0;
   }, []);
 
   useEffect(() => {
     reset();
-  }, [text, reset]);
+  }, [sessionKey, reset]);
 
   useEffect(() => {
     if (startedAt === null || finished) return;
     const id = window.setInterval(() => setElapsed((Date.now() - startedAt) / 1000), 100);
     return () => window.clearInterval(id);
   }, [startedAt, finished]);
+
+  useEffect(() => {
+    if (mode !== "time" || !timeLimitSec || startedAt === null || finished) return;
+    const id = window.setInterval(() => {
+      const sec = (Date.now() - startedAt) / 1000;
+      if (sec >= timeLimitSec) setFinished(true);
+    }, 100);
+    return () => window.clearInterval(id);
+  }, [mode, timeLimitSec, startedAt, finished]);
 
   useEffect(() => {
     if (startedAt === null || finished) return;
@@ -95,6 +104,15 @@ export function useTyping(text: string, options: Options = {}) {
     }, 1500);
     return () => window.clearInterval(id);
   }, [startedAt, finished]);
+
+  useEffect(() => {
+    if (mode !== "time" || finished || !onExtendTextRef.current) return;
+    const remaining = textRef.current.length - typedRef.current.length;
+    if (remaining < 15 && textRef.current.length > extendedAtRef.current) {
+      extendedAtRef.current = textRef.current.length;
+      onExtendTextRef.current();
+    }
+  }, [typed, text, mode, finished]);
 
   useEffect(() => {
     const clearTimer = { id: 0 };
@@ -128,7 +146,9 @@ export function useTyping(text: string, options: Options = {}) {
         } else {
           setStartedAt((s) => s ?? Date.now());
           setTyped((t) => {
-            if (t.length >= text.length) return t;
+            if (mode === "words" && t.length >= text.length) return t;
+            if (mode === "time" && t.length >= text.length) return t;
+
             const expected = text[t.length];
             const ok = e.key === expected;
             setTotalKeystrokes((n) => n + 1);
@@ -144,7 +164,12 @@ export function useTyping(text: string, options: Options = {}) {
               setActiveError(false);
             }
             const next = t + e.key;
-            if (next.length >= text.length) setFinished(true);
+
+            if (mode === "words" && wordTarget) {
+              const words = countCorrectWords(next, text);
+              if (words >= wordTarget) setFinished(true);
+            }
+
             return next;
           });
         }
@@ -159,11 +184,14 @@ export function useTyping(text: string, options: Options = {}) {
       window.removeEventListener("keydown", onKeyDown);
       window.clearTimeout(clearTimer.id);
     };
-  }, [text, finished, recordErrorKey]);
+  }, [text, finished, recordErrorKey, mode, wordTarget]);
 
   useEffect(() => {
     if (finished && startedAt !== null) {
-      const finalElapsed = (Date.now() - startedAt) / 1000;
+      const finalElapsed =
+        mode === "time" && timeLimitSec
+          ? Math.min((Date.now() - startedAt) / 1000, timeLimitSec)
+          : (Date.now() - startedAt) / 1000;
       setElapsed(finalElapsed);
       const finalWpm = calcWpm(typedRef.current, textRef.current, finalElapsed);
       setWpmHistory((prev) => {
@@ -174,13 +202,26 @@ export function useTyping(text: string, options: Options = {}) {
         return [...prev, { t: Math.round(finalElapsed), wpm: finalWpm }];
       });
     }
-  }, [finished, startedAt]);
+  }, [finished, startedAt, mode, timeLimitSec]);
 
   const correctChars = typed.split("").filter((c, i) => c === text[i]).length;
   const minutes = elapsed / 60;
   const wpm = minutes > 0 ? Math.round(correctChars / 5 / minutes) : 0;
   const accuracy =
     totalKeystrokes > 0 ? Math.round((Math.max(totalKeystrokes - errors, 0) / totalKeystrokes) * 100) : 100;
+
+  const wordsCompleted = countCorrectWords(typed, text);
+  const timeRemaining =
+    mode === "time" && timeLimitSec ? Math.max(0, Math.ceil(timeLimitSec - elapsed)) : null;
+
+  const progress =
+    mode === "time" && timeLimitSec
+      ? Math.min(100, (elapsed / timeLimitSec) * 100)
+      : wordTarget
+        ? Math.min(100, (wordsCompleted / wordTarget) * 100)
+        : text.length
+          ? (typed.length / text.length) * 100
+          : 0;
 
   return {
     typed,
@@ -194,7 +235,10 @@ export function useTyping(text: string, options: Options = {}) {
     accuracy,
     wpmHistory,
     errorKeys,
+    wordsCompleted,
+    timeRemaining,
     reset,
-    progress: text.length ? (typed.length / text.length) * 100 : 0,
+    progress,
+    started: startedAt !== null,
   };
 }

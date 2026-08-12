@@ -29,8 +29,7 @@ export const LENGTHS = {
 
 export type LengthKey = keyof typeof LENGTHS;
 
-export function generateText(length: LengthKey): string {
-  const count = LENGTHS[length];
+export function generateWords(count: number): string {
   const out: string[] = [];
   let prev = "";
   for (let i = 0; i < count; i++) {
@@ -42,4 +41,16 @@ export function generateText(length: LengthKey): string {
   }
 
   return out.join(" ");
+}
+
+export function generateText(length: LengthKey): string {
+  return generateWords(LENGTHS[length]);
+}
+
+/** Toma las primeras `count` palabras o rellena con palabras aleatorias si faltan. */
+export function prepareWordModeText(text: string, count: number): string {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= count) return words.slice(0, count).join(" ");
+  const needed = count - words.length;
+  return `${words.join(" ")} ${generateWords(needed)}`.trim();
 }
