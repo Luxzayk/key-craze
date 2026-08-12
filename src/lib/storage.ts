@@ -8,7 +8,7 @@ export const STORAGE_KEYS = {
   sound: `${PREFIX}sound`,
 } as const;
 
-export type TestMode = "time" | "words";
+export type TestMode = "time" | "words" | "custom";
 export type TimeOption = 15 | 30 | 60 | 120;
 export type WordsOption = 10 | 25 | 50 | 100;
 
@@ -16,6 +16,7 @@ export interface TestConfig {
   mode: TestMode;
   timeSeconds: TimeOption;
   wordCount: WordsOption;
+  customText?: string;
 }
 
 export interface StreakData {
@@ -31,6 +32,8 @@ export interface SessionRecord {
   wpm: number;
   accuracy: number;
   errors: number;
+  /** Palabras del texto personalizado (solo modo custom). */
+  customWordCount?: number;
 }
 
 export type FontId = "jetbrains" | "fira" | "source" | "ibm" | "system";
@@ -125,9 +128,10 @@ function isValidTestConfig(v: unknown): v is TestConfig {
   if (!v || typeof v !== "object") return false;
   const c = v as TestConfig;
   return (
-    (c.mode === "time" || c.mode === "words") &&
+    (c.mode === "time" || c.mode === "words" || c.mode === "custom") &&
     TIME_OPTIONS.includes(c.timeSeconds) &&
-    WORD_OPTIONS.includes(c.wordCount)
+    WORD_OPTIONS.includes(c.wordCount) &&
+    (c.customText === undefined || typeof c.customText === "string")
   );
 }
 
@@ -143,7 +147,7 @@ function isValidSession(v: unknown): v is SessionRecord {
   return (
     typeof s.id === "string" &&
     typeof s.timestamp === "number" &&
-    (s.mode === "time" || s.mode === "words") &&
+    (s.mode === "time" || s.mode === "words" || s.mode === "custom") &&
     typeof s.amount === "number" &&
     typeof s.wpm === "number" &&
     typeof s.accuracy === "number" &&

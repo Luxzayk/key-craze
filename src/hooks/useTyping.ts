@@ -82,7 +82,7 @@ export function useTyping(text: string, sessionKey: number, options: Options) {
   }, [startedAt, finished]);
 
   useEffect(() => {
-    if (mode !== "time" || !timeLimitSec || startedAt === null || finished) return;
+    if ((mode !== "time" && mode !== "custom") || !timeLimitSec || startedAt === null || finished) return;
     const id = window.setInterval(() => {
       const sec = (Date.now() - startedAt) / 1000;
       if (sec >= timeLimitSec) setFinished(true);
@@ -148,6 +148,7 @@ export function useTyping(text: string, sessionKey: number, options: Options) {
           setTyped((t) => {
             if (mode === "words" && t.length >= text.length) return t;
             if (mode === "time" && t.length >= text.length) return t;
+            if (mode === "custom" && t.length >= text.length) return t;
 
             const expected = text[t.length];
             const ok = e.key === expected;
@@ -166,6 +167,11 @@ export function useTyping(text: string, sessionKey: number, options: Options) {
             const next = t + e.key;
 
             if (mode === "words" && wordTarget) {
+              const words = countCorrectWords(next, text);
+              if (words >= wordTarget) setFinished(true);
+            }
+
+            if (mode === "custom" && wordTarget) {
               const words = countCorrectWords(next, text);
               if (words >= wordTarget) setFinished(true);
             }
@@ -189,7 +195,7 @@ export function useTyping(text: string, sessionKey: number, options: Options) {
   useEffect(() => {
     if (finished && startedAt !== null) {
       const finalElapsed =
-        mode === "time" && timeLimitSec
+        (mode === "time" || mode === "custom") && timeLimitSec
           ? Math.min((Date.now() - startedAt) / 1000, timeLimitSec)
           : (Date.now() - startedAt) / 1000;
       setElapsed(finalElapsed);
@@ -212,10 +218,12 @@ export function useTyping(text: string, sessionKey: number, options: Options) {
 
   const wordsCompleted = countCorrectWords(typed, text);
   const timeRemaining =
-    mode === "time" && timeLimitSec ? Math.max(0, Math.ceil(timeLimitSec - elapsed)) : null;
+    (mode === "time" || mode === "custom") && timeLimitSec
+      ? Math.max(0, Math.ceil(timeLimitSec - elapsed))
+      : null;
 
   const progress =
-    mode === "time" && timeLimitSec
+    (mode === "time" || mode === "custom") && timeLimitSec
       ? Math.min(100, (elapsed / timeLimitSec) * 100)
       : wordTarget
         ? Math.min(100, (wordsCompleted / wordTarget) * 100)

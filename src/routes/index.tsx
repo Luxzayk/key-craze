@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Volume2, VolumeX } from "lucide-react";
-import { generateWords, prepareWordModeText } from "@/lib/words";
+import { generateWords } from "@/lib/words";
+import { wordCountOf } from "@/lib/typing-utils";
 import { useTyping } from "@/hooks/useTyping";
 import { useSoundPreference } from "@/hooks/useSoundPreference";
 import { useFontPreference } from "@/hooks/useFontPreference";
@@ -49,8 +50,16 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
+function normalizeText(text: string): string {
+  return text.trim().replace(/\s+/g, " ");
+}
+
 function buildText(config: TestConfig): string {
   if (config.mode === "words") return generateWords(config.wordCount);
+  if (config.mode === "custom") {
+    const custom = normalizeText(config.customText ?? "");
+    return custom || generateWords(30);
+  }
   return generateWords(50);
 }
 
@@ -68,6 +77,8 @@ function Index() {
   const { fontId, fontFamily, setFont } = useFontPreference();
   const savedSessionRef = useRef<number | null>(null);
 
+  const customWordCount = config.mode === "custom" ? wordCountOf(text) : undefined;
+
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
@@ -79,8 +90,13 @@ function Index() {
   const t = useTyping(text, sessionKey, {
     soundEnabled,
     mode: config.mode,
-    timeLimitSec: config.mode === "time" ? config.timeSeconds : undefined,
-    wordTarget: config.mode === "words" ? config.wordCount : undefined,
+    timeLimitSec: config.mode === "time" || config.mode === "custom" ? config.timeSeconds : undefined,
+    wordTarget:
+      config.mode === "words"
+        ? config.wordCount
+        : config.mode === "custom" && customWordCount
+          ? customWordCount
+          : undefined,
     onExtendText: config.mode === "time" ? extendText : undefined,
   });
 
@@ -101,9 +117,32 @@ function Index() {
       if (!canChangeConfig) return;
       setConfig(next);
       saveTestConfig(next);
+      if (next.mode === "custom") {
+        const custom = normalizeText(next.customText ?? "");
+        if (custom) startNewSession(custom);
+        else {
+          setText("");
+          setSessionKey((k) => k + 1);
+          setIsNewPB(false);
+          savedSessionRef.current = null;
+        }
+        return;
+      }
       startNewSession(buildText(next));
     },
     [canChangeConfig, startNewSession],
+  );
+
+  const handleApplyCustomText = useCallback(
+    (customText: string) => {
+      const normalized = normalizeText(customText);
+      if (!normalized) return;
+      const next = { ...config, mode: "custom" as const, customText: normalized };
+      setConfig(next);
+      saveTestConfig(next);
+      startNewSession(normalized);
+    },
+    [config, startNewSession],
   );
 
   useEffect(() => {
@@ -112,7 +151,8 @@ function Index() {
     savedSessionRef.current = sessionKey;
 
     const pbBefore = getPersonalBest();
-    const amount = config.mode === "time" ? config.timeSeconds : config.wordCount;
+    const amount =
+      config.mode === "words" ? config.wordCount : config.timeSeconds;
 
     saveSession({
       timestamp: Date.now(),
@@ -121,6 +161,7 @@ function Index() {
       wpm: t.wpm,
       accuracy: t.accuracy,
       errors: t.errors,
+      customWordCount: config.mode === "custom" ? customWordCount : undefined,
     });
 
     updateStreak();
@@ -130,7 +171,14 @@ function Index() {
     const pbAfter = getPersonalBest();
     setPersonalBest(pbAfter);
     setIsNewPB(t.wpm > pbBefore && t.wpm >= pbAfter);
-  }, [t.finished, t.wpm, t.accuracy, t.errors, sessionKey, config]);
+  }, [t.finished, t.wpm, t.accuracy, t.errors, sessionKey, config, customWordCount]);
+
+  const statusHint = (() => {
+    if (t.blocked) return "corrige el error con ⌫ para continuar";
+    if (config.mode === "time") return `modo tiempo · ${config.timeSeconds}s — empieza a escribir…`;
+    if (config.mode === "words") return `modo palabras · ${config.wordCount} — empieza a escribir…`;
+    return `modo personalizado · ${config.timeSeconds}s · ${customWordCount ?? 0} palabras — empieza a escribir…`;
+  })();
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-background px-4 py-8">
@@ -169,6 +217,7 @@ function Index() {
         <TestConfigSelector
           config={config}
           onChange={handleConfigChange}
+          onApplyCustomText={handleApplyCustomText}
           disabled={!canChangeConfig}
         />
       </div>
@@ -190,44 +239,46 @@ function Index() {
           />
         ) : (
           <>
-            <StatsPanel
-              wpm={t.wpm}
-              accuracy={t.accuracy}
-              seconds={Math.round(t.elapsed)}
-              errors={t.errors}
-              progress={t.progress}
-              mode={config.mode}
-              timeRemaining={t.timeRemaining}
-              wordsCompleted={t.wordsCompleted}
-              wordTarget={config.mode === "words" ? config.wordCount : undefined}
-            />
-            <TypingArea
-              text={text}
-              typed={t.typed}
-              errorAt={t.blocked}
-              fontFamily={fontFamily}
-            />
-            <p className="font-mono text-xs text-muted-foreground">
-              {t.blocked
-                ? "corrige el error con ⌫ para continuar"
-                : config.mode === "time"
-                  ? `modo tiempo · ${config.timeSeconds}s — empieza a escribir…`
-                  : `modo palabras · ${config.wordCount} — empieza a escribir…`}
-            </p>
+            {config.mode === "custom" && !customWordCount ? null : (
+              <StatsPanel
+                wpm={t.wpm}
+                accuracy={t.accuracy}
+                seconds={Math.round(t.elapsed)}
+                errors={t.errors}
+                progress={t.progress}
+                mode={config.mode}
+                timeRemaining={t.timeRemaining}
+                wordsCompleted={t.wordsCompleted}
+                wordTarget={
+                  config.mode === "words"
+                    ? config.wordCount
+                    : config.mode === "custom"
+                      ? customWordCount
+                      : undefined
+                }
+              />
+            )}
+            {config.mode === "custom" && !customWordCount ? (
+              <div className="flex w-full items-center justify-center rounded-2xl border border-dashed border-border bg-card/30 p-12">
+                <p className="text-center font-mono text-sm text-muted-foreground">
+                  escribe un texto arriba y pulsa «usar texto» para empezar
+                </p>
+              </div>
+            ) : (
+              <TypingArea
+                text={text}
+                typed={t.typed}
+                errorAt={t.blocked}
+                fontFamily={fontFamily}
+              />
+            )}
+            {config.mode !== "custom" || customWordCount ? (
+              <p className="font-mono text-xs text-muted-foreground">{statusHint}</p>
+            ) : null}
           </>
         )}
 
-        <TextGenerator
-          onGenerate={() => startNewSession()}
-          onCustomText={(txt) => {
-            const normalized = txt.trim().replace(/\s+/g, " ");
-            const next =
-              config.mode === "words"
-                ? prepareWordModeText(normalized, config.wordCount)
-                : normalized;
-            startNewSession(next || buildText(config));
-          }}
-        />
+        <TextGenerator mode={config.mode} onGenerate={() => startNewSession()} />
 
         <div className={t.finished ? "mt-2 w-full" : "w-full"}>
           <VirtualKeyboard

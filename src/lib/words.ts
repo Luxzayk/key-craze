@@ -46,11 +46,3 @@ export function generateWords(count: number): string {
 export function generateText(length: LengthKey): string {
   return generateWords(LENGTHS[length]);
 }
-
-/** Toma las primeras `count` palabras o rellena con palabras aleatorias si faltan. */
-export function prepareWordModeText(text: string, count: number): string {
-  const words = text.trim().split(/\s+/).filter(Boolean);
-  if (words.length >= count) return words.slice(0, count).join(" ");
-  const needed = count - words.length;
-  return `${words.join(" ")} ${generateWords(needed)}`.trim();
-}

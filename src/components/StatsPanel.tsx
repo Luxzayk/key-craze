@@ -26,8 +26,10 @@ export function StatsPanel({
   wordTarget,
 }: Props) {
   const timeValue =
-    mode === "time" && timeRemaining !== null ? `${timeRemaining}s` : `${seconds}s`;
-  const timeLabel = mode === "time" ? "restante" : "tiempo";
+    (mode === "time" || mode === "custom") && timeRemaining !== null
+      ? `${timeRemaining}s`
+      : `${seconds}s`;
+  const timeLabel = mode === "time" || mode === "custom" ? "restante" : "tiempo";
 
   return (
     <div className="w-full rounded-2xl border border-border bg-card/50 p-4 backdrop-blur">
@@ -54,7 +56,13 @@ export function StatsPanel({
             label={timeLabel}
             value={timeValue}
             size="sm"
-            valueClassName={mode === "time" && timeRemaining !== null && timeRemaining <= 5 ? "text-destructive" : "text-primary"}
+            valueClassName={
+              (mode === "time" || mode === "custom") &&
+              timeRemaining !== null &&
+              timeRemaining <= 5
+                ? "text-destructive"
+                : "text-primary"
+            }
           />
         )}
         <StatChip icon={AlertCircle} label="errores" value={String(errors)} size="sm" valueClassName="text-primary" />
@@ -65,6 +73,11 @@ export function StatsPanel({
           style={{ width: `${progress}%` }}
         />
       </div>
+      {mode === "custom" && wordTarget ? (
+        <p className="mt-2 text-center font-mono text-xs text-muted-foreground">
+          {wordsCompleted}/{wordTarget} palabras completadas
+        </p>
+      ) : null}
     </div>
   );
 }

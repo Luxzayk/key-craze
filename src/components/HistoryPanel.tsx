@@ -23,7 +23,9 @@ function formatDate(ts: number): string {
 }
 
 function modeLabel(session: SessionRecord): string {
-  return session.mode === "time" ? `${session.amount}s` : `${session.amount} pal.`;
+  if (session.mode === "time") return `${session.amount}s`;
+  if (session.mode === "words") return `${session.amount} pal.`;
+  return `${session.amount}s · ${session.customWordCount ?? "?"} pal.`;
 }
 
 export function HistoryPanel({ history, personalBest }: Props) {
